@@ -9,11 +9,14 @@ print_usage ()
   cat << EOF
 $0 command args
 commands:
-    list:                 lists all the users and their repos
-    add user [repos]:     give write-access to the repos for user, create the user
-                          or the repos if needed
-    dump:                 dump the new authorized_keys file
-    add_key user ssh-key: add the key to the user's keys
+    list                  lists all the users and their repos
+    add user [repos]      give write-access to the repos for user, create the 
+                          user or the repos if needed
+    dump                  dump the new authorized_keys file
+    add_key user ssh-key  add the key to the user's keys
+    del_user user         delete an user
+    del_repos repos       remove repositories from hard drive and configuration
+    del_write user repo   remove the write access of one user to a repo
     help:                 print this help screen
 EOF
 }
@@ -81,7 +84,42 @@ add_key ()
   echo $@ >> "$KEY_DIR/$USER"
 }
 
-if [ -z $@ ]
+del_repos ()
+{
+  until [ -z "$1" ]
+  do
+    sed $CONFIG -i -e "s/$1//"
+    sed $CONFIG -i -e "s/  / /" # fix multiple spaces
+    echo "Removing $REPOS_DIR/$1"
+    rm -rf "$REPOS_DIR/$1"
+    shift
+  done
+}
+
+del_user ()
+{
+  if [[ -z $(grep "^$1:" $CONFIG) ]]
+  then
+    echo "User don't exists: $1"
+  else
+    echo "Removing user $1"
+    grep -v "^$1:" $CONFIG > $CONFIG.tmp
+    mv $CONFIG.tmp $CONFIG
+    rm -f $KEYS/$1
+  fi
+}
+
+del_write ()
+{
+  if [[ -z $(grep "^$1:" $CONFIG) ]]
+  then
+    echo "User don't exists: $1"
+  else
+    sed $CONFIG -i -e "s/^\($1:.*\)$2\(.*\)$/\1\2/"
+  fi
+}
+
+if [[ -z "$@" ]]
 then
   print_usage
 else
@@ -90,6 +128,9 @@ else
     add) shift; add_repos $@;;
     dump) dump;;
     add_key) shift; add_key $@;;
+    del_repos) shift; del_repos $@;;
+    del_user) shift; del_user $1;;
+    del_write) shift; del_write $@;;
     help) echo "Unknown command: $0";;
   esac
 fi
