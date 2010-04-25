@@ -29,7 +29,17 @@ create_repo ()
     mkdir -p "$REPOS_DIR/$1"
     cd $_
     hg init
-    cd -
+    cd - >>/dev/null
+  fi
+}
+
+user_dont_exists ()
+{
+  if [[ -z $(grep $1 $CONFIG) ]]
+  then
+    return 0
+  else
+    return 1
   fi
 }
 
@@ -37,7 +47,7 @@ add_repos ()
 {
   USER=$1
   shift
-  if [[ -z $(grep $USER $CONFIG) ]]
+  if user_dont_exists $USER
   then
     echo "Adding user $USER"
     echo "$USER:" >> $CONFIG
@@ -69,7 +79,8 @@ dump ()
         cat "$KEY_DIR/$USER" |
           while read KEY
           do 
-            echo "command=\"hg-ssh $REPOS\",no-port-forwarding,no-agent-forwarding $KEY"
+            echo -n "command=\"hg-ssh $REPOS\",no-port-forwarding,"
+            echo ",no-X11-forwarding,no-agent-forwarding $KEY"
           done
       else
         echo "No key file for user $USER in $KEY_DIR/$USER"
@@ -98,25 +109,17 @@ del_repos ()
 
 del_user ()
 {
-  if [[ -z $(grep "^$1:" $CONFIG) ]]
-  then
-    echo "User don't exists: $1"
-  else
-    echo "Removing user $1"
-    grep -v "^$1:" $CONFIG > $CONFIG.tmp
-    mv $CONFIG.tmp $CONFIG
-    rm -f $KEYS/$1
-  fi
+  user_dont_exists $1 && echo "User $1 don't exist" && return 1
+  echo "Removing user $1"
+  grep -v "^$1:" $CONFIG > $CONFIG.tmp
+  mv $CONFIG.tmp $CONFIG
+  rm -f $KEYS/$1
 }
 
 del_write ()
 {
-  if [[ -z $(grep "^$1:" $CONFIG) ]]
-  then
-    echo "User don't exists: $1"
-  else
-    sed $CONFIG -i -e "s/^\($1:.*\)$2\(.*\)$/\1\2/"
-  fi
+  user_dont_exists $1 && echo "User $1 don't exist" && return 1
+  sed $CONFIG -i -e "s/^\($1:.*\)$2\(.*\)$/\1\2/"
 }
 
 if [[ -z "$@" ]]
@@ -131,6 +134,6 @@ else
     del_repos) shift; del_repos $@;;
     del_user) shift; del_user $1;;
     del_write) shift; del_write $@;;
-    help) echo "Unknown command: $0";;
+    *) print_usage;;
   esac
 fi
