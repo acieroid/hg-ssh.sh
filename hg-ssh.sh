@@ -2,7 +2,7 @@
 
 CONFIG=config
 KEY_DIR=keys
-REPOS_DIR=repos
+REPOS_DIR=./
 
 print_usage ()
 {
