@@ -72,8 +72,10 @@ dump ()
   cat config |
     while read LINE
     do 
-      USER=$(echo $LINE | sed 's/\([a-zA-Z0-9]*\):.*/\1/')
-      REPOS=$(echo $LINE | sed 's/[a-zA-Z0-9]*:\(.*\)/\1/')
+      USER=$(echo $LINE | sed 's/\(^[a-zA-Z0-9]*\):.*/\1/')
+      REPOS=$(echo $LINE | sed 's/^[a-zA-Z0-9]*:\(.*\)/\1/' |
+                sed "s,^\([a-zA-Z0-9]\),$REPOS_DIR/\1,g" |
+                sed "s, \([a-zA-Z0-9]\), $REPOS_DIR/\1,g" )
       if [ -e "$KEY_DIR/$USER" ]
       then
         cat "$KEY_DIR/$USER" |
